@@ -18,3 +18,19 @@
 2. [Player Analysis](http://rpubs.com/jimmycy93/247662)
 
 ##File description
+
+   Code and files are uploaded to this repository, each described as below:
+   
+1. [GrabNBA.rmd] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/GrabNBA.rmd) - Code for scaping and cleaning data
+
+2. [JamesHarden.rmd] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/JamesHarden.rmd) - Code for Player Analysis
+
+3. [Shotchart.csv] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/Shotchart.csv) - Cleaned csv file of shot chart data
+
+4. [Shotdashboard.csv] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/Shotdashboard.csv) - Cleaned csv file of shot dashboard data   
+
+5. [aveLeague.csv] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/aveLeague.csv) - Cleaned csv file of summarized shot chart data of league average
+
+6. [server.R] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/server.R) - Code for the server part of shiny application
+
+7. [ui.R] (https://github.com/jimmycy93/NBA-data-analysis/blob/master/ui.R) - Code for the user interface part of shiny application
