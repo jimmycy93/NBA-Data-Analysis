@@ -1,0 +1,21 @@
+"","SHOT_ZONE_BASIC","SHOT_ZONE_AREA","SHOT_ZONE_RANGE","FGA","FGM","FG_PCT"
+"1","Above the Break 3","Back Court(BC)","Back Court Shot",36,1,0.028
+"2","Above the Break 3","Center(C)","24+ ft.",7604,2707,0.356
+"3","Above the Break 3","Left Side Center(LC)","24+ ft.",10874,3847,0.354
+"4","Above the Break 3","Right Side Center(RC)","24+ ft.",10437,3682,0.353
+"5","Backcourt","Back Court(BC)","Back Court Shot",314,6,0.019
+"6","In The Paint (Non-RA)","Center(C)","8-16 ft.",4069,1722,0.423
+"7","In The Paint (Non-RA)","Center(C)","Less Than 8 ft.",10897,4455,0.409
+"8","In The Paint (Non-RA)","Left Side(L)","8-16 ft.",1145,479,0.418
+"9","In The Paint (Non-RA)","Right Side(R)","8-16 ft.",1223,515,0.421
+"10","Left Corner 3","Left Side(L)","24+ ft.",4675,1828,0.391
+"11","Mid-Range","Center(C)","16-24 ft.",3845,1537,0.4
+"12","Mid-Range","Center(C)","8-16 ft.",1294,588,0.454
+"13","Mid-Range","Left Side Center(LC)","16-24 ft.",4061,1657,0.408
+"14","Mid-Range","Left Side(L)","16-24 ft.",2711,1117,0.412
+"15","Mid-Range","Left Side(L)","8-16 ft.",4398,1789,0.407
+"16","Mid-Range","Right Side Center(RC)","16-24 ft.",4490,1794,0.4
+"17","Mid-Range","Right Side(R)","16-24 ft.",2611,1012,0.388
+"18","Mid-Range","Right Side(R)","8-16 ft.",4154,1572,0.378
+"19","Restricted Area","Center(C)","Less Than 8 ft.",39108,23694,0.606
+"20","Right Corner 3","Right Side(R)","24+ ft.",4392,1699,0.387

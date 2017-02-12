@@ -1,0 +1,143 @@
+---
+title: "Scraping NBA stats"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+For the purpose of analysis, we will scape shooting dashboard stats and shot chart stats from http://stats.nba.com/ for the 10 season MVP competitors.
+
+Shooting Dashboard includes serveral types of shooting stats, such as time before shotclock and defense pressure, and the field goal percentage of each type as well.
+
+Shooting chart data includes stats for each shot taken, such as shot location and shot range. Moreover, the data also comes along with leagues average accuracy for each combination of shooting region.
+
+
+#Getting the API
+  In order to scrape the data we need, we have to find the underlying API of the website. Following instructions from [here](http://www.gregreda.com/2015/02/15/web-scraping-finding-the-api/) of Gred Reda, we are able to grab the request URL we need for all 10 players, with unique parameter 'PlayerID' for each player. For example, the request URL for shot dashboard and shot chart data of Stephen Curry in season 2016-17 are [dashboard url](http://stats.nba.com/stats/playerdashptshots?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&PerMode=PerGame&Period=0&PlayerID=201939&Season=2016-17&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=) and [shot chart url](http://stats.nba.com/stats/shotchartdetail?Period=0&VsConference=&LeagueID=00&LastNGames=0&TeamID=0&Position=&Location=&Outcome=&ContextMeasure=FGA&DateFrom=&StartPeriod=&DateTo=&OpponentTeamID=0&ContextFilter=&RangeType=&Season=2016-17&AheadBehind=&PlayerID=201939&EndRange=&VsDivision=&PointDiff=&RookieYear=&GameSegment=&Month=0&ClutchTime=&StartRange=&EndPeriod=&SeasonType=Regular+Season&SeasonSegment=&GameID=&PlayerPosition=)respectively. In the example above, the unique PlayerID for Stephen Curry is 201939. 
+
+#The shooting dashboard data
+The url retrieves the data we want in JSON structure, therefore we will use package jsonlite to get the data in R. 
+```{r}
+#Get the url for each of 10 players respectively: James Harden, Stephen Curry, Kevin Durant, Russel Westbrook, Lebron James, Kawhi Leonard, Chris Paul, Kyle Lowry, Isaiah Thomas, and Giannis Antetokounmpo. 
+PlayerID<-c(201935,201939,201142,201566,2544,202695,101108,200768,202738,203507)
+dashurl<-paste("http://stats.nba.com/stats/playerdashptshots?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&Month=0&OpponentTeamID=0&Outcome=&PerMode=PerGame&Period=0&PlayerID=",PlayerID,"&Season=2016-17&SeasonSegment=&SeasonType=Regular+Season&TeamID=0&VsConference=&VsDivision=",sep = "")
+
+#import from jsonlite
+library(jsonlite)
+Shotdashboard<-NULL
+for(i in 1:length(PlayerID)){
+  
+  dash<-jsonlite::fromJSON(dashurl[i],simplifyDataFrame = TRUE)
+  #We now have JSON data as a R list object, and the data we want is contained in the    third element 'resultSets' of the list 
+  
+  Obs<-dash$resultSets$rowSet
+  #There are seven lists of different classes of stats, coerce it to data frame and      bind it together into a complete dataframe of stats for each player
+  res<-lapply(Obs,data.frame)
+  temp<-do.call("rbind", res)
+  #name the columns of new dataframe
+  colnames(temp)<-dash$resultSets$headers[[1]]
+  
+  #The 'SORT_ORDER' variable is useless, replace it with 'Class' variable indicating     the class of shooting measure
+  classnames<-dash$resultSets$name
+  class<-NULL
+  for(j in 1:7) class<-append(class,rep(classnames[j],nrow(Obs[[j]])))
+  temp["SORT_ORDER"]<-class
+  library(dplyr)
+  temp<-rename(temp,CLASS=SORT_ORDER)
+  
+  Shotdashboard<-rbind(Shotdashboard,temp)
+}
+
+```
+
+#The shooting chart data
+```{r}
+#get the url for API
+charturl<-paste("http://stats.nba.com/stats/shotchartdetail?Period=0&VsConference=&LeagueID=00&LastNGames=0&TeamID=0&Position=&Location=&Outcome=&ContextMeasure=FGA&DateFrom=&StartPeriod=&DateTo=&OpponentTeamID=0&ContextFilter=&RangeType=&Season=2016-17&AheadBehind=&PlayerID=",PlayerID,"&EndRange=&VsDivision=&PointDiff=&RookieYear=&GameSegment=&Month=0&ClutchTime=&StartRange=&EndPeriod=&SeasonType=Regular+Season&SeasonSegment=&GameID=&PlayerPosition=",sep = "")
+
+#import from jsonlite
+Shotchart<-NULL
+for(i in 1:length(PlayerID)){
+  chart<-jsonlite::fromJSON(charturl[i],simplifyDataFrame = TRUE)
+  #The data comes in two list, one for player and the second for league average, we      will coerce the first list into data frame for now
+  temp<-data.frame(chart$resultSets$rowSet[[1]])
+  colnames(temp)<-chart$resultSets$headers[[1]]
+  Shotchart<-rbind(Shotchart,temp)
+}
+```
+
+We want the shooting chart data for league average for comparison
+```{r}
+aveLeague<-data.frame(chart$resultSets$rowSet[[2]])
+colnames(aveLeague)<-chart$resultSets$headers[[2]]
+```
+
+#Data Cleaning
+```{r}
+#Shotdashboard
+
+#Change the player name into the same format as Shotchart
+names<-data.frame(
+dashname=unique(Shotdashboard$PLAYER_NAME_LAST_FIRST),
+chartname=unique(Shotchart$PLAYER_NAME))
+Shotdashboard[,2]<- sapply(Shotdashboard[,2], function(x){
+names$chartname[match(x, names$dashname)] #equivalant to gsub for vectors
+})
+Shotdashboard<-rename(Shotdashboard,PLAYER_NAME=PLAYER_NAME_LAST_FIRST)
+
+#Format the class of variables
+cols<-c(4:5,7:ncol(Shotdashboard))
+Shotdashboard[cols]<-as.numeric(as.matrix(Shotdashboard[cols]))
+Shotdashboard$CLASS<-as.factor(Shotdashboard$CLASS)
+Shotdashboard$SHOT_TYPE<-as.character(Shotdashboard$SHOT_TYPE)
+
+#Regularize the class "ShotClockShooting" from variable "SHOT_TYPE"
+Shotclock<-filter(Shotdashboard,CLASS%in%"ShotClockShooting")
+time<-data.frame(
+original=unique(Shotclock$SHOT_TYPE),
+new=c("22-24","18-22","15-18","07-15","04-07","00-04","ShotClock Off","Not Captured"))
+Shotclock[,6]<- sapply(Shotclock[,6], function(x){
+time$new[match(x, time$original)] 
+})
+Shotdashboard[Shotdashboard$CLASS%in%"ShotClockShooting",6]<-as.character(Shotclock[,6])
+
+#Regularize the class "ClosestDefenderShooting" and "ClosestDefender10ftPlusShooting" from variable "SHOT_TYPE"
+Closedefend<-filter(Shotdashboard,CLASS%in%c("ClosestDefenderShooting","ClosestDefender10ftPlusShooting"))
+defense<-data.frame(
+original=unique(Closedefend$SHOT_TYPE),
+new=c("0-2 very tight","2-4 tight","4-6 open","6+ wide open"))
+Closedefend[,6]<- sapply(Closedefend[,6], function(x){
+defense$new[match(x, defense$original)] 
+})
+Shotdashboard[Shotdashboard$CLASS%in%c("ClosestDefenderShooting","ClosestDefender10ftPlusShooting"),6]<-as.character(Closedefend[,6])
+
+```
+
+```{r}
+#Shotchart
+
+#Subset with only needed columns
+Shotchart<-select(Shotchart,c(2,4:5,8:21))
+#Format the class of variables
+cols<-c(5:6,13:15)
+Shotchart[cols]<-as.numeric(as.matrix(Shotchart[cols]))
+```
+
+```{r}
+#AveLeague
+aveLeague<-select(aveLeague,-1)
+aveLeague[4:6]<-as.numeric(as.matrix(aveLeague[4:6]))
+```
+
+#Write the clean dataset into csv files
+```{r}
+write.csv(Shotdashboard,"Shotdashboard.csv")
+write.csv(Shotchart,"Shotchart.csv")
+write.csv(aveLeague,"aveLeague.csv")
+```
+
+
+
+

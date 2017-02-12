@@ -1,0 +1,282 @@
+---
+title:  <center>**How Good is James Harden's Shooting?** </center>
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##*Introduction*
+    
+      This is an analysis additional to the shiny application of NBA exploratory data analysis. Even though a player's performance should be measured from many perspective, this analysis will stick to the most important aspect in my opinion: Shooting. The purpose for this analysis is to use serveral graphs to compare the shooting performance of my favorite player, James Harden, to other MVP reward competitors in season 2016-2017.
+
+##*Reading data and preprocessing*
+
+
+###**Read the pre-cleaned data sets**
+```{r}
+shotchart<-read.csv("Shotchart.csv")
+shotdashboard<-read.csv("Shotdashboard.csv")
+averageleague<-read.csv("aveLeague.csv")
+```
+###**Load the necessary packages**
+```{r}
+suppressMessages(library(dplyr))#for data manipulation
+suppressMessages(library(tidyr)) #for reshaping data
+suppressMessages(library(ggplot2))#for ploting
+suppressMessages(library(scales))#for labels as percentage
+suppressMessages(library(RCurl))#for getting url content
+suppressMessages(library(jpeg))#for reading JPEG file
+suppressMessages(library(grid))#for rendering a raster grob
+```
+###**Create common theme for plots**
+```{r}
+blank_theme <- theme_minimal()+
+  theme(
+    panel.border = element_blank(),
+    axis.ticks = element_blank(),
+    plot.title=element_text(size=12)
+  )
+```
+###**Create frequently used operator**
+```{r}
+"%ni%" <- Negate("%in%")   #It is the opposite of %in%, used in subsetting by names
+```
+
+
+
+#*Exploratory Analysis*
+
+###**How efficient is Harden?**
+
+      This section explores the effectiveness of James Harden's shot by two similiar measures, points per game by shots attempted(free throws not included), and the effective field goal percentage(eFG% = (FGM + (0.5 x 3PTM)) / FGA). Other 9 players' performance are added as grey points for comparison.
+
+```{r,echo=FALSE}
+#create a subset to plot
+overall<-shotdashboard%>%
+  filter(SHOT_TYPE%in%"Overall")%>%
+  mutate(POINTS=FG2M*2+FG3M*3)%>%
+  select(PLAYER_NAME,FGA,EFG_PCT,POINTS)
+
+#calculate average eFG% for the whole league, eFG% = (FGM + (0.5 x 3PTM)) / FGA
+FGM<-sum(averageleague$FGM)
+FG3M<-sum(filter(averageleague,SHOT_ZONE_RANGE%in%"24+ ft.")$FGM)
+FGA<-sum(averageleague$FGA)
+league_eFG<-(sum(FGM)+(0.5*sum(FG3M)))/FGA
+league_eFG<-round(league_eFG,digits = 3)
+
+
+ggplot(overall,aes(x=FGA,y=POINTS))+
+  geom_point(aes(color=ifelse(PLAYER_NAME%in%"James Harden","A","B")),shape=19,size=5,alpha=0.5)+
+  geom_text(aes(label=ifelse(PLAYER_NAME%in%"James Harden","James Harden","")),vjust=2.5,size=3)+
+  geom_text(aes(label=ifelse(PLAYER_NAME%in%"Russell Westbrook","Russell Westbrook","")),vjust=2.5,hjust=0.8,size=3)+
+  scale_color_manual(values=c("yellow","grey"))+
+  blank_theme+
+  xlab("FGA")+
+  ylab("Points")+
+  theme(legend.position = "hide")+
+  ggtitle("Points made by field goal attempts per game")
+
+#order the players by eFG%
+overall$PLAYER_NAME<-factor(overall$PLAYER_NAME,levels = overall$PLAYER_NAME[order(overall$EFG_PCT,decreasing = TRUE)])
+ggplot(overall,aes(x=PLAYER_NAME,y=EFG_PCT))+
+  geom_bar(aes(fill=ifelse(PLAYER_NAME%in%"James Harden","A","B")),alpha=0.5,stat="identity")+
+  geom_hline(yintercept =league_eFG,size=1)+
+  geom_text(aes(0,league_eFG,label = "league average",hjust=-0.1,vjust=2))+
+  scale_fill_manual(values=c("yellow","grey"))+
+  scale_y_continuous(labels=percent,limits = c(0,0.75))+
+  blank_theme+
+  xlab("")+
+  ylab("eFG%")+
+  theme(legend.position = "hide",axis.text.x=element_text(angle = -90, hjust = 0))+
+  ggtitle("Effective field goal percentage by player")
+```
+
+      From the two graphs above, we can tell that even though James Harden is an effective shooter among the league, he does not stand out from the 10 MVP competitors. The number of his attempts per game is slightly high comparing to other 9 players, with only moderate points made. In fact, his effective field goal percentage, by the barplot, is ranked as ninth place, which is not outstanding comparing to other competitors.
+
+###**Can clock or defense stops Harden?**
+
+      This section measures the accuracy of James Harden's shots by different time pressure and defense pressure. The average of other 9 players' performance is added for comparison.
+
+```{r,echo=FALSE}
+#create subsets of James Harden
+James_clock<-shotdashboard%>%
+  filter(PLAYER_NAME%in%"James Harden"&CLASS%in%"ShotClockShooting"&SHOT_TYPE%ni%c("ShotClock Off","Not Captured"))%>%
+  select(PLAYER_NAME,SHOT_TYPE,FG_PCT)
+James_defense<-shotdashboard%>%
+  filter(PLAYER_NAME%in%"James Harden"&CLASS%in%"ClosestDefenderShooting")%>%
+  select(PLAYER_NAME,SHOT_TYPE,FG_PCT)
+James_defense10<-shotdashboard%>%
+  filter(PLAYER_NAME%in%"James Harden"&CLASS%in%"ClosestDefender10ftPlusShooting")%>%
+  select(PLAYER_NAME,SHOT_TYPE,FG_PCT)
+
+#create subsets of the average of other 9 players
+average_clock<-filter(shotdashboard,PLAYER_NAME%ni%"James Harden"&CLASS%in%"ShotClockShooting"&SHOT_TYPE%ni%c("ShotClock Off","Not Captured"))%>%
+  group_by(SHOT_TYPE)%>%
+  summarise(PLAYER_NAME="Average",FG_PCT=round(mean(FG_PCT),digits=3))
+
+average_defense<-filter(shotdashboard,PLAYER_NAME%ni%"James Harden"&CLASS%in%"ClosestDefenderShooting")%>%
+  group_by(SHOT_TYPE)%>%
+  summarise(PLAYER_NAME="Average",FG_PCT=round(mean(FG_PCT),digits=3))
+
+average_defense10<-filter(shotdashboard,PLAYER_NAME%ni%"James Harden"&CLASS%in%"ClosestDefender10ftPlusShooting")%>%
+  group_by(SHOT_TYPE)%>%
+  summarise(PLAYER_NAME="Average",FG_PCT=round(mean(FG_PCT),digits=3))
+
+#bind the subsets together
+clock<-rbind(average_clock,James_clock)
+defense<-rbind(average_defense,James_defense)
+defense10<-rbind(average_defense10,James_defense10)
+
+#plot the FG% by time left on shot clock
+clock$SHOT_TYPE<-factor(clock$SHOT_TYPE,levels = c("22-24","18-22","15-18","07-15","04-07","00-04"))
+ggplot(clock,aes(x=SHOT_TYPE,y=FG_PCT,color=PLAYER_NAME))+
+  geom_line(aes(group = PLAYER_NAME),alpha=0.5)+
+  geom_point(size=3,alpha=0.5)+
+  ggtitle("FG% by seconds left on the shotclock")+
+  scale_y_continuous(labels=percent,limits = c(0,0.75))+
+  scale_color_manual(values=c("grey","yellow"))+
+  xlab("")+
+  ylab("FG%")+
+  blank_theme+
+  theme(legend.position = "bottom",legend.title = element_blank())
+ 
+#create a line plot for FG% by the range from the closest defender(shot<10 feet)
+ggplot(defense,aes(x=SHOT_TYPE,y=FG_PCT,color=PLAYER_NAME))+
+  geom_line(aes(group = PLAYER_NAME),alpha=0.5)+
+  geom_point(size=3,alpha=0.5)+
+  ggtitle("FG% by feets away from the closest defender(Shot<10 feet)")+
+  scale_y_continuous(labels=percent,limits = c(0,0.75))+
+  scale_color_manual(values=c("grey","yellow"))+
+  xlab("")+
+  ylab("FG%")+
+  blank_theme+
+  theme(legend.position = "bottom",legend.title = element_blank())
+         
+#create a line plot for FG% by the range from the closest defender(shot>10 feet)
+ggplot(defense10,aes(x=SHOT_TYPE,y=FG_PCT,color=PLAYER_NAME))+
+  geom_line(aes(group = PLAYER_NAME),alpha=0.5)+
+  geom_point(size=3,alpha=0.5)+
+  ggtitle("FG% by feets away from the closest defender(Shot>10 feet)")+
+  scale_y_continuous(labels=percent,limits = c(0,0.75))+
+  scale_color_manual(values=c("grey","yellow"))+
+  xlab("")+
+  ylab("FG%")+
+  blank_theme+
+  theme(legend.position = "bottom",legend.title = element_blank())
+
+```
+    
+      From the three plots above, we can tell that James Harden shoots a lot better when there are more time on the shot clock, while having a below-average accuracy when the shot clock is hitting near 0. For shots shorter than 10 feet, the defense has as much pressure on James Harden as the other 9 players, resulting in similiar trend in accuracy. For long range shots however, James Harden's shooting accuracy does not shift regarding the defense pressure, while in average the others shoots better while open. 
+
+###**Is Harden a key player?**
+      This section explores the performance of James Harden at critical time such as the last period of game or OT's. Also, a key player should shoot the ball into the bucket, even when the shot is tough, therefore we measure it by the attemps and accuracy of pull up threes, which is both a hard and valuable shot. As above, the performance of other 9 players are added for comparison.
+```{r,echo=FALSE}
+#create subsets of accuracy by periods
+James_periods<-filter(shotchart,PLAYER_NAME%in%"James Harden")%>%
+  group_by(PERIOD)%>%
+        summarise(PLAYER_NAME="James Harden","ACCURACY"=round(sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG),digits=3))
+average_periods<-filter(shotchart,PLAYER_NAME%ni%"James Harden")%>%
+  group_by(PERIOD)%>%
+        summarise(PLAYER_NAME="Average","ACCURACY"=round(sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG),digits=3))
+
+#combine the two subsets together for plotting
+periods<-rbind(James_periods,average_periods)
+periods$PERIOD<-as.factor(periods$PERIOD)
+
+ggplot(periods,aes(x=PERIOD,y=ACCURACY))+
+  geom_line(aes(group = PLAYER_NAME,color=PLAYER_NAME),size=1,alpha=0.5)+
+  geom_point(aes(color=PLAYER_NAME,size=ifelse(periods$PERIOD==c(4,5,6),"A","B")),alpha=0.5)+
+  ggtitle("FG% by periods(5th and 6th period are 1st and 2nd OT)")+
+  scale_y_continuous(labels=percent,limits = c(0,0.75))+
+  scale_color_manual(values=c("grey","yellow"))+
+  scale_size_manual(labels=c("Key periods","Normal periods"),values=c(5,3))+
+  xlab("")+
+  ylab("FG%")+
+  blank_theme+
+  theme(legend.position = "bottom",legend.title = element_blank())
+
+#create subsets for all 10 players'(including Harden) pull up threes FG%
+pullupthrees<-shotdashboard%>%
+  filter(CLASS%in%"GeneralShooting"&SHOT_TYPE%in%"Pull Ups")%>%
+  select(PLAYER_NAME,FG3A,FG3_PCT)
+
+#plot FG3% by shots attempted
+ggplot(pullupthrees,aes(x=FG3A,y=FG3_PCT))+
+  geom_point(aes(color=ifelse(PLAYER_NAME%in%"James Harden","A","B")),shape=19,size=5,alpha=0.5)+
+  geom_text(aes(label=ifelse(PLAYER_NAME%in%"James Harden","James Harden","")),vjust=-2,hjust=0.8,size=3)+
+  geom_text(aes(label=ifelse(PLAYER_NAME%in%"Kyle Lowry","Kyle Lowry","")),vjust=-2,hjust=0.8,size=3)+
+  scale_y_continuous(labels=percent,limits = c(0,0.75))+
+  scale_color_manual(values=c("yellow","grey"))+
+  blank_theme+
+  xlab("FG3A")+
+  ylab("FG%")+
+  theme(legend.position = "hide")+
+  ggtitle("Pull up threes FG% by shots attempted per game")
+```
+
+      From the first plot, James Harden has a below average shooting accuracy comparing to other MVP competitiors, however, his accuracy increases as the game hits 4th period, and way better than others in overtime periods. The second plot indicates that James Harden favor pull up threes more than any of the other 9 players, however, his accuracy is only medium among them.
+    
+###**Where should Harden shoot?**
+
+      This section will use two kinds of shot chart to illustrate how well James Harden shoot in different region on the court. One of the two use continuos color to graph Harden's accuracy by shot region, and the other use binary colors(red and green) to compare the shooting accuracy between Harden and other 9 players' average.
+
+```{r,echo=FALSE}
+#set the court background for plotting
+courtimgurl<-"https://thedatagame.files.wordpress.com/2016/03/nba_court.jpg"
+      court <- rasterGrob(readJPEG(getURLContent(courtimgurl)),width=unit(1,"npc"), height=unit(1,"npc"))
+
+#calculate the mean location for each region
+all<-shotchart%>%group_by(SHOT_ZONE_BASIC,SHOT_ZONE_AREA,SHOT_ZONE_RANGE)%>%summarise(LOCX=mean(LOC_X),LOCY=mean(LOC_Y)) 
+all<-filter(all,SHOT_ZONE_AREA%ni%"Back Court(BC)") #eliminate back court shots
+
+James_chart<-shotchart%>%
+  filter(PLAYER_NAME%in%"James Harden")%>%
+  group_by(SHOT_ZONE_BASIC,SHOT_ZONE_AREA,SHOT_ZONE_RANGE)%>%
+  summarise(FGA=sum(SHOT_ATTEMPTED_FLAG),Accuracy=sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG))
+James_chart<-filter(James_chart,SHOT_ZONE_AREA%ni%"Back Court(BC)") #eliminate back court shots
+James_chart$LOCX<-all$LOCX
+James_chart$LOCY<-all$LOCY #set the locaion in order to plot
+James_chart$Accuracy<-round(James_chart$Accuracy,digits=3) #round the accuracy
+
+average_chart<-shotchart%>%
+  filter(PLAYER_NAME%ni%"James Harden")%>%
+  group_by(SHOT_ZONE_BASIC,SHOT_ZONE_AREA,SHOT_ZONE_RANGE)%>%
+  summarise(FGA=sum(SHOT_ATTEMPTED_FLAG),Accuracy=sum(SHOT_MADE_FLAG)/sum(SHOT_ATTEMPTED_FLAG))
+average_chart<-filter(average_chart,SHOT_ZONE_AREA%ni%"Back Court(BC)") #eliminate back court shots
+average_chart$LOCX<-all$LOCX
+average_chart$LOCY<-all$LOCY #set the locaion in order to plot
+
+#first plot
+ggplot(James_chart, aes(x=LOCX, y=LOCY)) + 
+  annotation_custom(court, -250, 250, -50, 420) +
+  geom_point(aes(size=FGA,color=Accuracy),shape=19,alpha=0.6)+
+  geom_text(aes(label=percent(Accuracy),color=Accuracy),vjust=-0.9,size=3)+
+  scale_colour_gradient("Accuracy",low = "yellow",high = "red")+
+  xlim(-250, 250)+
+  ylim(-50, 420)+
+  ggtitle("Harden's FG% by region(size by shots attempted)")+
+  guides(size=FALSE)+
+  blank_theme+
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),axis.title.x = element_blank(),axis.title.y = element_blank(),legend.position="bottom")
+
+#second plot
+ggplot(James_chart,aes(x=LOCX, y=LOCY))+ 
+  annotation_custom(court, -250, 250, -50, 420) +
+  geom_point(aes(size=FGA,color=ifelse(James_chart$Accuracy>=average_chart$Accuracy,"A","B")),shape=19,alpha=0.6)+
+  geom_text(aes(label=percent(Accuracy),color=ifelse(James_chart$Accuracy>=average_chart$Accuracy,"A","B")),vjust=-0.9,size=3)+
+   scale_color_manual("Accuracy",labels = c("above average", "below average"), values = c("#008000","#FF6347"))+
+  xlim(-250, 250)+
+  ylim(-50, 420)+
+  ggtitle("Comparison between Harden and average of other 9 competitors")+
+  guides(size=FALSE)+
+  blank_theme+
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank(),axis.title.x = element_blank(),axis.title.y = element_blank(),legend.position="bottom")
+```
+
+      From the first plot, it is clear that James Harden prefer 3 pointers, but not from the corner. His shoots better from the left side of the court, with the best accuracy within the restricted area. From the second plot, we can see that James Harden has a below-average FG% comparing to the MVP reward competitors, especially on the three point line. However, his shots from 8-16 feet on the left of the court has an above-average accuracy, Harden should take this advantage and shoot more from the left.  
+
+ 
+#*Conclusion*
+      To briefly concludes the explortatory analysis above, James Harden is not qualified as a MVP player from shooting stats we collected. However, James Harden is known for the ability of making free throw opportunities from defensive player, and a above-average free throws accuracy. These additional to other aspects, such as assists, rebound, defensive performance, could have made difference to the analysis constructed above if added. Therefore, I plan to create a more general comparison between Harden and the other 9 competitors using more kind of stats and more type of plots in the future. 
