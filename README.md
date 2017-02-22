@@ -15,7 +15,7 @@
 
 1. [Shiny Application](https://jimmycy93.shinyapps.io/Exericises/)
 
-2. [Player Analysis](http://rpubs.com/jimmycy93/247662)
+2. [Player Analysis](http://rpubs.com/jimmycy93/252619)
 
 ##File description
 
