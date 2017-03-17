@@ -1,6 +1,6 @@
 # NBA Data Analysis
 
-##Project introduction
+## Project introduction
    
    This project aims to demonstrate my skills of scraping data, cleaning data, graphing data, and forming stories from data. In order to do so, I picked my favorite sport, basketball, and use the data from [NBA Stats](http://stats.nba.com/) to create some analyis. This project sticks to shooting stats and for the purpose of this project, I use shot chart data(shots from different shot location, shot region,..etc) and shot dashboard data(shots by time on shotclock, distance from closest defender,..etc) of ten best players of the league in my opinion. The project was broken into three parts, each described as below:
     
@@ -11,13 +11,13 @@
    
 3. Constructing player analysis - The previous part only produce graphs without interpreting, therefore I constructed an data analysis of comparison between my favorite player, James Harden, and other nine MVP reward competitors. The analysis aims to measure the shooting performance by customized graphs and interpretation. Same as the previous part of project, the link to the work is provided in next section. 
    
-##Links to project
+## Links to project
 
 1. [Shiny Application](https://jimmycy93.shinyapps.io/Exericises/)
 
 2. [Player Analysis](http://rpubs.com/jimmycy93/252619)
 
-##File description
+## File description
 
    Code and files are uploaded to this repository, each described as below:
    
